@@ -1,103 +1,146 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [timetable, setTimetable] = useState('');
+  const [tasks, setTasks] = useState('');
+  const [response, setResponse] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setResponse([]);
+
+    const tasksArray = tasks.split('\n').filter(t => t.trim() !== '');
+
+    try {
+      const res = await fetch('/api/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ timetable, tasks: tasksArray }),
+      });
+
+      const data = await res.json();
+      if (Array.isArray(data.schedule)) {
+        setResponse(data.schedule);
+      } else {
+        setResponse([{ time: '', task: data.schedule || data.error || 'No response' }]);
+      }
+    } catch (err) {
+      setResponse([{ time: '', task: 'Error sending request.' }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <main style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>🧠 AI Task Scheduler</h1>
+
+        <form onSubmit={handleSubmit} style={styles.form}>
+          <label style={styles.label}>🕒 Timetable</label>
+          <textarea
+            style={styles.textarea}
+            rows="6"
+            value={timetable}
+            onChange={(e) => setTimetable(e.target.value)}
+            placeholder="Example: 9AM-10AM: Free\n10AM-11AM: Meeting"
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+
+          <label style={styles.label}>📋 Tasks (one per line)</label>
+          <textarea
+            style={styles.textarea}
+            rows="6"
+            value={tasks}
+            onChange={(e) => setTasks(e.target.value)}
+            placeholder="Example: Buy groceries\nCall mom"
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+          <button type="submit" disabled={loading} style={styles.button}>
+            {loading ? '⏳ Scheduling...' : '🚀 Submit Tasks'}
+          </button>
+        </form>
+
+        {response.length > 0 && (
+          <div style={styles.responseBox}>
+            <h3>📅 Updated Schedule</h3>
+            <ul style={styles.list}>
+              {response.map((item, index) => (
+                <li key={index} style={styles.listItem}>
+                  <strong>{item.time}</strong>{item.time && ':'} {item.task}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
+
+const styles = {
+  container: {
+    padding: '2rem',
+    background: '#f7f9fc',
+    minHeight: '100vh',
+    display: 'flex',
+    justifyContent: 'center',
+  },
+  card: {
+    background: '#fff',
+    borderRadius: '1rem',
+    padding: '2rem',
+    maxWidth: '700px',
+    width: '100%',
+    boxShadow: '0 10px 20px rgba(0,0,0,0.1)',
+  },
+  title: {
+    marginBottom: '1.5rem',
+    textAlign: 'center',
+    color: '#2c3e50',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.25rem',
+  },
+  label: {
+    fontWeight: 'bold',
+    color: '#34495e',
+  },
+  textarea: {
+    padding: '1rem',
+    borderRadius: '0.5rem',
+    border: '1px solid #ccc',
+    fontSize: '1rem',
+    resize: 'vertical',
+  },
+  button: {
+    padding: '0.75rem 1rem',
+    border: 'none',
+    borderRadius: '0.5rem',
+    backgroundColor: '#3498db',
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    transition: 'background 0.3s',
+  },
+  responseBox: {
+    marginTop: '2rem',
+    background: '#f0f8ff',
+    padding: '1rem',
+    borderRadius: '0.75rem',
+  },
+  list: {
+    paddingLeft: '1rem',
+    marginTop: '0.5rem',
+  },
+  listItem: {
+    marginBottom: '0.5rem',
+    lineHeight: '1.6',
+  },
+};
